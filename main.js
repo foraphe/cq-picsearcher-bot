@@ -176,6 +176,17 @@ async function commonHandle(e, context) {
     return true;
   }
 
+  if (context.message[0] === '!') {
+    try {
+      runExtendCommands(context);
+    }
+    catch (e) {
+      // 谁知道会发生什么呢
+      replyMsg(context, '发生未知错误');
+    }
+    return true;
+  }
+
   // setu
   if (global.config.bot.setu.enable) {
     if (sendSetu(context, logger)) return true;
@@ -426,21 +437,6 @@ async function searchImg(context, customDB = -1) {
   if (hasWord('akhr') || hasWord('公招')) {
     doAkhr(context);
     return;
-  }
-
-
-  // 随机选择
-  if (context.message.indexOf('!') === 0 || context.message.indexOf('\ff01') === 0) {
-    try {
-      runExtendCommands(context);
-    }
-    catch (e) {
-      // 谁知道会发生什么呢
-      replyMsg(context, '发生未知错误');
-    }
-    finally {
-      return;
-    }
   }
 
   // 决定搜索库
