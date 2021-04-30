@@ -1,7 +1,7 @@
 import { jsonc } from 'jsonc';
 import { resolve } from 'path';
 
-const CONFIG_PATH = resolve(__dirname, '../../excConfig.jsonc');
+const CONFIG_PATH = resolve(__dirname, '../../extendConfig.jsonc');
 
 function load() {
     try {
