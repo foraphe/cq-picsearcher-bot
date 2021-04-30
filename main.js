@@ -591,7 +591,7 @@ function runExtendCommands(context) {
 
 function doChoice(context) {
   if (!extendConfig.choice.enabled) return;
-  replyMsg(context, choice(context), modConfig.choice.replyWithAt);
+  replyMsg(context, choice(context), extendConfig.choice.replyWithAt);
 }
 
 function doAkhr(context) {
