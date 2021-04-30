@@ -8,7 +8,7 @@ function load() {
         return jsonc.readSync(CONFIG_PATH);
     }
     catch (e) {
-        global.sendMsg2Admin("ERROR: 读取扩展指令配置文件出错");
+        console.log("ERROR: 读取扩展指令配置文件出错");
         return { error: true };
     }
 }
