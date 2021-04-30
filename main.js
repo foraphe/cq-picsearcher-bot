@@ -24,6 +24,9 @@ import searchingMap from './src/searchingMap';
 import asyncMap from './src/utils/asyncMap';
 const ocr = require('./src/plugin/ocr');
 
+const extendConfig = require('./src/extendCommands/extendConfig').load();
+import choice from './src/extendCommands/choices.js';
+
 const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();
 const rand = RandomSeed.create();
@@ -281,7 +284,7 @@ async function privateAndAtMsg(e, context) {
           context = { ...context, message: context.message.replace(/^\[CQ:reply,id=[-\d]+?\]/, rMsg) };
         }
       }
-    } catch (error) {}
+    } catch (error) { }
   }
 
   if (hasImage(context.message)) {
@@ -425,6 +428,21 @@ async function searchImg(context, customDB = -1) {
     return;
   }
 
+
+  // 随机选择
+  if (context.message[0] == '!' || context.message[0] == '！') {
+    try {
+      runExtendCommands(context);
+    }
+    catch (e) {
+      // 谁知道会发生什么呢
+      replyMsg(context, '发生未知错误');
+    }
+    finally {
+      return;
+    }
+  }
+
   // 决定搜索库
   let db = snDB[global.config.bot.saucenaoDefaultDB] || snDB.all;
   if (customDB < 0) {
@@ -561,6 +579,23 @@ function doOCR(context) {
   for (const img of imgs) {
     ocr.default(img, lang).then(handleOcrResult);
   }
+}
+
+function runExtendCommands(context) {
+  if (extendConfig.error === true) return;
+
+  const inStr = str => context.message.indexOf(str) !== -1;
+
+  // 匹配"还是"
+  if (inStr('\u8fd8\u662f')) {
+    doChoice(context);
+    return;
+  }
+}
+
+function doChoice(context) {
+  if (!extendConfig.choice.enabled) return;
+  replyMsg(context, choice(context), modConfig.choice.replyWithAt);
 }
 
 function doAkhr(context) {

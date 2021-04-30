@@ -1,6 +1,7 @@
 # Myself
 /config.json
 /config.jsonc
+/excConfig.jsonc
 /test
 /data/*
 
