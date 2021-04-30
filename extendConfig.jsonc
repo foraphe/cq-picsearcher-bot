@@ -1,0 +1,8 @@
+{
+    "choice": {
+        // 启用随机选择
+        "enabled": true,
+        // 回复时包括对发送者的@
+        "replyWithAt": true
+    }
+}
