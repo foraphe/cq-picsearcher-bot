@@ -3,7 +3,7 @@ function run(context) {
     // "还是"
     const choices = context.message.substr(1, context.message.length).replace(reg, ' ').split(' ');
     if (choices.length <= 1) return;
-    const randInt = parseInt(Math.random() * (choices.length - 1));
+    const randInt = parseInt(Math.random() * (choices.length));
     return choices[randInt];
 }
 
