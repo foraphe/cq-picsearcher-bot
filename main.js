@@ -182,7 +182,7 @@ async function commonHandle(e, context) {
     }
     catch (e) {
       // 谁知道会发生什么呢
-      replyMsg(context, '发生未知错误' + e.msg);
+      replyMsg(context, '发生未知错误' + e.message);
     }
     return true;
   }
