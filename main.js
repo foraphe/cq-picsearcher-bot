@@ -430,7 +430,7 @@ async function searchImg(context, customDB = -1) {
 
 
   // 随机选择
-  if (context.message[0] == '!' || context.message[0] == '！') {
+  if (context.message.indexOf('!') === 0 || context.message.indexOf('\ff01') === 0) {
     try {
       runExtendCommands(context);
     }
