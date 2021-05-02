@@ -24,6 +24,7 @@ import searchingMap from './src/searchingMap';
 import asyncMap from './src/utils/asyncMap';
 const ocr = require('./src/plugin/ocr');
 
+const extendCommands = require('./src/extendCommands/extendCommands');
 const extendConfig = require('./src/extendCommands/extendConfig').load();
 import choice from './src/extendCommands/choices.js';
 
@@ -176,7 +177,7 @@ async function commonHandle(e, context) {
     return true;
   }
 
-  if (context.message[0] === '!') {
+  if (extendConfig.error !== true && context.message[0] === '!') {
     try {
       runExtendCommands(context);
     }
@@ -579,19 +580,16 @@ function doOCR(context) {
 
 function runExtendCommands(context) {
   if (extendConfig.error === true) return;
-
-  const inStr = str => context.message.indexOf(str) !== -1;
-
-  // 匹配"还是"
-  if (inStr('\u8fd8\u662f')) {
-    doChoice(context);
-    return;
+  try {
+    for (let i of extendCommands) {
+      if (i.listen(context)) {
+        i.exec(i.module, context, extendConfig[i.config]);
+      }
+    }
   }
-}
-
-function doChoice(context) {
-  if (!extendConfig.choice.enabled) return;
-  replyMsg(context, choice(context), extendConfig.choice.replyWithAt);
+  catch (e) {
+    replyMsg(context, "发生错误:" + e.message);
+  }
 }
 
 function doAkhr(context) {
