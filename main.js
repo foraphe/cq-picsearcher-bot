@@ -26,7 +26,7 @@ const ocr = require('./src/plugin/ocr');
 
 const extendCommands = require('./src/extendCommands/extendCommands');
 const extendConfig = require('./src/extendCommands/extendConfig').load();
-import choice from './src/extendCommands/choices.js';
+const choice = require('./src/extendCommands/choices');
 
 const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();
