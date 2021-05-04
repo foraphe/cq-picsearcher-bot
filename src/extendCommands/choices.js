@@ -11,7 +11,7 @@ function get(context) {
     }
     // "A是不是B"
     else if (context.message.match('\u662f\u4e0d\u662f')) {
-        const prefix = context.message.substr(1, context.message.match('\u662f\u4e0d\u662f').index);
+        const prefix = context.message.substr(1, context.message.match('\u662f\u4e0d\u662f').index - 1);
         const suffix = context.message.substr(context.message.match('\u662f\u4e0d\u662f').index + 3, context.message.length);
         const choices = ['是', '不是'];
         return prefix + choices[randInt(2)] + suffix;
