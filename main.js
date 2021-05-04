@@ -26,7 +26,7 @@ const ocr = require('./src/plugin/ocr');
 
 const extendCommands = require('./src/extendCommands/extendCommands');
 const extendConfig = require('./src/extendCommands/extendConfig').load();
-const choice = require('./src/extendCommands/choices');
+const choices = require('./src/extendCommands/choices');
 
 const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();
@@ -583,7 +583,7 @@ function runExtendCommands(context) {
   try {
     for (let i of extendCommands) {
       if (i.listen(context)) {
-        i.exec(i.module, context, extendConfig[i.config]);
+        i.exec(eval(i.module), context, extendConfig[i.config]);
       }
     }
   }
