@@ -1,7 +1,7 @@
 const commands = [
-    {
+    {   //
         // "A是不是B" | "A还是B"
-        "listen": (context) => context.message.indexOf('\u8fd8\u662f|\u662f\u4e0d\u662f') !== -1,
+        "listen": (context) => context.message.indexOf('\u8fd8\u662f') !== -1 | context.message.indexOf('\u662f\u4e0d\u662f') !== -1,
         "module": "choices",
         "exec": (module, context, config) => module(context, config),
         "config": "choice"
