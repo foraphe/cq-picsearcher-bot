@@ -100,8 +100,7 @@ function sendSetu(context, logger) {
     }
 
     Axios.get(
-      `${zza}?r18=${r18 ? 1 : 0}${keyword || ''}${setting.size1200 ? '&size1200' : ''}${
-        setting.apikey ? '&apikey=' + setting.apikey.trim() : ''
+      `${zza}?r18=${r18 ? 1 : 0}${keyword || ''}${setting.size1200 ? '&size1200' : ''}${setting.apikey ? '&apikey=' + setting.apikey.trim() : ''
       }`
     )
       .then(ret => ret.data)
@@ -110,6 +109,11 @@ function sendSetu(context, logger) {
           if (ret.code === 429) global.replyMsg(context, replys.setuQuotaExceeded || ret.error, true);
           else global.replyMsg(context, ret.error, true);
           return;
+        }
+
+        if (r18) {
+          global.replyMsg(context, "结果将私聊发送");
+          context.message_type = 'private';
         }
 
         global.replyMsg(context, `${ret.url} (p${ret.p})`, true);
