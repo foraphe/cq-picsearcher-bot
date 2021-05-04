@@ -112,7 +112,7 @@ function sendSetu(context, logger) {
         }
 
         if (r18) {
-          global.replyMsg(context, "结果将私聊发送");
+          if (context.message_type !== 'private') global.replyMsg(context, '结果将私聊发送');
           context.message_type = 'private';
         }
 
