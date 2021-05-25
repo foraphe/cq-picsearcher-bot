@@ -27,6 +27,7 @@ const ocr = require('./src/plugin/ocr');
 const extendCommands = require('./src/extendCommands/extendCommands');
 const extendConfig = require('./src/extendCommands/extendConfig').load();
 const choices = require('./src/extendCommands/choices');
+const sudo = require('./src/extendCommands/sudo');
 
 const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();

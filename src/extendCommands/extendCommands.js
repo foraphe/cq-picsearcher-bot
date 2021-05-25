@@ -20,6 +20,12 @@ const commands = [
         "exec": (module, context, config) => module(context, config),
         "module": "choices",
         "config": "choice"
+    },
+    {
+        "listen": (context) => context.message.substr(0, 5) === '!sudo',
+        "module": "sudo",
+        "exec": (module, context, config) => module(context, config),
+        "config": "sudo"
     }
 ];
 
