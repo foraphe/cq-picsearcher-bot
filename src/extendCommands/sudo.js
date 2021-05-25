@@ -6,7 +6,7 @@ function run(context, config) {
     const command = context.message.substr(6);
     switch (command) {
         case 'load':
-            const retv = `uptime: ${os.uptime}\nmem: ${os.freemem}/${os.totalmem}\nload: ${os.loadavg}`;
+            const retv = `mem: ${parseInt(os.freemem / 1048576)}MB/${parseInt(os.totalmem / 1048576)}MB\nload: ${os.loadavg()}`;
             global.replyMsg(context, retv);
     }
 }
