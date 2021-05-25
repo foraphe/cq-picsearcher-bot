@@ -10,3 +10,5 @@ function run(context, config) {
             global.replyMsg(context, retv);
     }
 }
+
+module.exports = run;
