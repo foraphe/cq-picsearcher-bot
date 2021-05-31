@@ -18,6 +18,5 @@ function run(context, config) {
         }
     }
 }
-}
 
 module.exports = run;
