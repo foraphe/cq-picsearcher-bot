@@ -11,7 +11,7 @@ function run(context, config) {
             global.replyMsg(context, retv);
             break;
         case 'setconfig':
-            const conf = command.substr(10);
+            const conf = tmp.substr(10);
             if (conf === 'setudest true' || conf === 'setudest false') {
                 if (!global.extendConfig || global.extendConfig.error) break;
                 const boolv = conf.substr(9);
