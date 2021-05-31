@@ -8,7 +8,7 @@ function run(context, config) {
         const retv = `mem: ${parseInt(os.freemem / 1048576)}MB/${parseInt(os.totalmem / 1048576)}MB\nload: ${Math.round(os.loadavg()[0] * 100) / 100},${Math.round(os.loadavg()[2] * 100) / 100}`;
         global.replyMsg(context, retv);
     }
-    else if (command.indexOf('setConfig') === 0) {
+    else if (command.indexOf('setconfig') === 0) {
         const conf = command.substr(10);
         if (conf === 'setudest true' || conf === 'setudest false') {
             if (!global.extendConfig || global.extendConfig.error) return;
