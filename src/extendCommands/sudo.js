@@ -10,7 +10,7 @@ function run(context, config) {
     }
     else if (command.indexOf('setconfig') === 0) {
         const conf = command.substr(10);
-        if (conf === 'setudest true' || conf === 'setudest false') {
+        if (conf.indexOf('setudest true') === 0 || conf.indexOf('setudest false') === 0) {
             if (!global.extendConfig || global.extendConfig.error) return;
             const boolv = conf.substr(9);
             global.extendConfig.misc.setu.privateAll = eval(boolv);
