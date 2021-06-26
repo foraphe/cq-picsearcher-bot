@@ -29,6 +29,7 @@ const extendConfigLoader = require('./src/extendCommands/extendConfig')
 let extendConfig = extendConfigLoader.load();
 const choices = require('./src/extendCommands/choices');
 const sudo = require('./src/extendCommands/sudo');
+const roll = require('./src/extendCommands/roll');
 
 const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();

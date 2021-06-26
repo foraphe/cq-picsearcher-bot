@@ -26,6 +26,12 @@ const commands = [
         "module": "sudo",
         "exec": (module, context, config) => module(context, config),
         "config": "sudo"
+    },
+    {
+        "listen": (context) => context.message.substr(0, 5) === '!roll',
+        "module": "roll",
+        "exec": (module, context, config) => module(context, config),
+        "config": "roll"
     }
 ];
 
