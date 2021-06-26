@@ -11,3 +11,5 @@ function run(context, config) {
     }
     global.replyMsg(context, '' + randInt(r), config.replyWithAt);
 }
+
+module.exports = run;
