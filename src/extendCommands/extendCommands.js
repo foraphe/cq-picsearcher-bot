@@ -32,6 +32,12 @@ const commands = [
         "module": "roll",
         "exec": (module, context, config) => module(context, config),
         "config": "roll"
+    },
+    {
+        "listen": (context) => context.message === '!poke',
+        "module": "poke",
+        "exec": (module, context, config) => module(context, config),
+        "config": "poke"
     }
 ];
 

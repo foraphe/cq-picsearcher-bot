@@ -29,6 +29,7 @@ let extendConfig = extendConfigLoader.load();
 const choices = require('./src/extendCommands/choices');
 const sudo = require('./src/extendCommands/sudo');
 const roll = require('./src/extendCommands/roll');
+const poke = require('./src/extendCommands/poke');
 
 const bot = new CQWebSocket(global.config.cqws);
 const rand = RandomSeed.create();
@@ -743,11 +744,11 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                 return bot('send_group_forward_msg', {
                     group_id: context.group_id,
                     messages: [{
-                        type: 'node',
-                        data: {
-                            uin: global.extendConfig.forward.user_id,
-                            name: global.extendConfig.forward.nickname,
-                            content: message
+                        'type': 'node',
+                        'data': {
+                            'uin': global.extendConfig.forward.user_id,
+                            'name': global.extendConfig.forward.nickname,
+                            'content': message
                         }
                     }]
                 });
