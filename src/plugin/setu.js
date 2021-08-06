@@ -5,7 +5,7 @@ import { URL } from 'url';
 import NamedRegExp from 'named-regexp-groups';
 import '../utils/jimp.plugin';
 import Jimp from 'jimp';
-//import urlShorten from '../urlShorten';
+import urlShorten from '../urlShorten';
 import logger from '../logger';
 const Axios = require('../axiosProxy');
 
