@@ -86,6 +86,16 @@ function reply(id) {
   return `[CQ:reply,id=${id}]`;
 }
 
+
+/**
+ * CQ码 合并转发
+ * @param {number} id 消息ID
+ * @returns CQ码 合并转发
+ */
+function forward(id) {
+    return `[CQ:forward,id=${id}]`;
+}
+
 export default {
   escape,
   unescape,
@@ -94,4 +104,5 @@ export default {
   img64,
   at,
   reply,
+  forward
 };

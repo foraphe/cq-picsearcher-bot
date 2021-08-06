@@ -1,0 +1,28 @@
+{
+    "choice": {
+        // 启用随机选择
+        "enabled": true,
+        // 回复时包括对发送者的@
+        "replyWithAt": true
+    },
+    "sudo": {
+        //启用管理员指令
+        "enabled": true,
+        //管理员列表
+        "admins": []
+    },
+    "roll": {
+        "replyWithAt": false
+    },
+    "misc": {
+        "setu": {
+            "privateAll": false,
+            "privateR18": true
+        }
+    },
+    "forward": { //使用自定义转发发送消息
+        "enabled": true,
+        "user_id": 1000000000,
+        "nickname": " "
+    }
+}

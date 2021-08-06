@@ -33,8 +33,11 @@ const bot = new CQWebSocket(global.config.cqws);
 const logger = new Logger();
 const rand = RandomSeed.create();
 
+const FLAG_DEBUG = true;
+
 // 全局变量
 globalReg({
+  FLAG_DEBUG,
   bot,
   replyMsg,
   sendMsg2Admin,
@@ -675,42 +678,76 @@ function sendMsg2Admin(message) {
  * @param {string} message 回复内容
  * @param {boolean} at 是否at发送者
  * @param {boolean} reply 是否使用回复形式
+ * @param {boolean} forward 是否通过合并转发形式发送
  */
-function replyMsg(context, message, at = false, reply = false) {
+function replyMsg(context, message, at = false, reply = false, forward = false) {
   if (!bot.isReady() || typeof message !== 'string' || message.length === 0) return;
   if (context.message_type !== 'private') {
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
   }
-  const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
-  switch (context.message_type) {
-    case 'private':
-      if (global.config.bot.debug) {
-        console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
-        console.log(logMsg);
-      }
-      return bot('send_private_msg', {
-        user_id: context.user_id,
-        message,
-      });
-    case 'group':
-      if (global.config.bot.debug) {
-        console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
-        console.log(logMsg);
-      }
-      return bot('send_group_msg', {
-        group_id: context.group_id,
-        message,
-      });
-    case 'discuss':
-      if (global.config.bot.debug) {
-        console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
-        console.log(logMsg);
-      }
-      return bot('send_discuss_msg', {
-        discuss_id: context.discuss_id,
-        message,
-      });
-  }
+    const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
+    if (!forward && !global.FLAG_DEBUG) {
+        switch (context.message_type) {
+            case 'private':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_private_msg', {
+                    user_id: context.user_id,
+                    message,
+                });
+            case 'group':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_group_msg', {
+                    group_id: context.group_id,
+                    message,
+                });
+            case 'discuss':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_discuss_msg', {
+                    discuss_id: context.discuss_id,
+                    message,
+                });
+        }
+    }
+    else {
+        switch (context.message_type) {
+            case 'private':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_private_msg', {
+                    type: 'node',
+                    data: {
+                        user_id: global.extendConfig.forward.user_id,
+                        nickname: global.extendConfig.forward.nickname,
+                        content: message
+                    }
+                });
+            case 'group':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_group_msg', {
+                    group_id: context.group_id,
+                    type: 'node',
+                    data: {
+                        'user_id': global.extendConfig.forward.user_id,
+                        'nickname': global.extendConfig.forward.nickname,
+                        'content': message
+                    }
+                });
+            }
+        }
 }
 
 /**
