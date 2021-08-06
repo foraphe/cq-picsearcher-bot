@@ -6,7 +6,6 @@ import saucenao, { snDB } from './src/saucenao';
 import whatanime from './src/whatanime';
 import ascii2d from './src/ascii2d';
 import CQ from './src/CQcode';
-import psCache from './src/cache';
 import logger from './src/logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
