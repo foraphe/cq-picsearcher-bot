@@ -100,85 +100,94 @@ function sendSetu(context, at = true) {
     return true;
   }
 
-    Axios.get(
-      `${API_URL}?r18=${r18 ? 1 : 0}${keyword || ''}${setting.size1200 ? '&size1200' : ''}${setting.apikey ? '&apikey=' + setting.apikey.trim() : ''
-      }`
-    )
-      .then(ret => ret.data)
-      .then(async ret => {
-        if (ret.code !== 0) {
-          if (ret.code === 429) global.replyMsg(context, replys.setuQuotaExceeded || ret.error, true);
-          else global.replyMsg(context, ret.error, true);
-          return;
-        }
+    let success = false;
+    Axios.post(API_URL, { r18, tag: keyword, size: ['original', 'regular'], proxy: null })
+        .then(ret => ret.data)
+        .then(async ret => {
+            if (ret.error) return global.replyMsg(context, ret.error, at);
+            if (!ret.data.length) return global.replyMsg(context, replys.setuNotFind, at);
 
-        if (
-          !global.extendConfig.error &&
-          (global.extendConfig.misc.setu.privateAll ||
-            (global.extendConfig.misc.setu.privateR18 && r18))
-        ) {
-          if (context.message_type !== 'private') global.replyMsg(context, '结果将私聊发送');
-          context.message_type = 'private';
-        }
+            const setu = ret.data[0];
+            const setuUrl = setting.size1200 ? setu.urls.regular : setu.urls.original;
+            const urlMsgs = [`https://pixiv.net/i/${setu.pid} (p${setu.p})`];
+            if (setting.sendPximgProxys.length) {
+                const sendUrls = [];
+                for (const imgProxy of setting.sendPximgProxys) {
+                    const imgUrl = getSetuUrlByTemplate(imgProxy, setu, setu.urls.original);
+                    sendUrls.push((await urlShorten(setting.shortenPximgProxy, imgUrl)).result);
+                }
+                if (sendUrls.length === 1) urlMsgs.push(`原图地址：${sendUrls[0]}`);
+                else urlMsgs.push('原图地址：', ...sendUrls);
+            }
 
-        global.replyMsg(context, `${ret.url} (p${ret.p})`, true);
+            if (
+                r18 &&
+                setting.r18OnlyUrl[
+                context.message_type === 'private' && context.sub_type !== 'friend' ? 'temp' : context.message_type
+                ]
+            ) {
+                global.replyMsg(context, urlMsgs.join('\n'), false, at);
+                return;
+            }
+            if (privateR18) urlMsgs.push('※ 图片将私聊发送');
+            global.replyMsg(context, urlMsgs.join('\n'), at);
 
-      const getReqUrl = url => (proxy ? getSetuUrlByTemplate(proxy, setu, url) : getProxyURL(url));
-      const url = getReqUrl(setuUrl);
-      const fallbackUrl = setting.size1200 ? undefined : getReqUrl(setu.urls.regular);
+            const getReqUrl = url => (proxy ? getSetuUrlByTemplate(proxy, setu, url) : getProxyURL(url));
+            const url = getReqUrl(setuUrl);
+            const fallbackUrl = setting.size1200 ? undefined : getReqUrl(setu.urls.regular);
 
-      // 反和谐
-      const base64 =
-        !privateR18 &&
-        isGroupMsg &&
-        setting.antiShielding &&
-        (await getAntiShieldingBase64(url, fallbackUrl).catch(e => {
-          console.error(`${global.getTime()} [error] anti shielding`);
-          console.error(setuUrl);
-          console.error(e);
-          if (String(e).includes('Could not find MIME for Buffer')) return PIXIV_404;
-          global.replyMsg(context, '反和谐发生错误，图片将原样发送，详情请查看错误日志');
-        }));
+            // 反和谐
+            const base64 =
+                !privateR18 &&
+                isGroupMsg &&
+                setting.antiShielding &&
+                (await getAntiShieldingBase64(url, fallbackUrl).catch(e => {
+                    console.error(`${global.getTime()} [error] anti shielding`);
+                    console.error(setuUrl);
+                    console.error(e);
+                    if (String(e).includes('Could not find MIME for Buffer')) return PIXIV_404;
+                    global.replyMsg(context, '反和谐发生错误，图片将原样发送，详情请查看错误日志');
+                }));
 
-      if (base64 === PIXIV_404) {
-        global.replyMsg(context, '图片发送失败，可能是网络问题/插画已被删除/原图地址失效');
-        return;
-      }
+            if (base64 === PIXIV_404) {
+                global.replyMsg(context, '图片发送失败，可能是网络问题/插画已被删除/原图地址失效');
+                return;
+            }
 
-      const imgType = delTime === -1 ? 'flash' : null;
-      if (privateR18) {
-        global.bot('send_private_msg', {
-          user_id: context.user_id,
-          group_id: setting.r18OnlyPrivateAllowTemp ? context.group_id : undefined,
-          message: CQcode.img(url, imgType),
-        });
-      } else {
-        global
-          .replyMsg(context, base64 ? CQcode.img64(base64, imgType) : CQcode.img(url, imgType))
-          .then(r => {
-            const message_id = _.get(r, 'data.message_id');
-            if (delTime > 0 && message_id)
-              setTimeout(() => {
-                global.bot('delete_msg', { message_id });
-              }, delTime * 1000);
-          })
-          .catch(e => {
-            console.error(`${global.getTime()} [error] delete msg`);
+            const imgType = delTime === -1 ? 'flash' : null;
+            if (privateR18) {
+                global.bot('send_private_msg', {
+                    user_id: context.user_id,
+                    group_id: setting.r18OnlyPrivateAllowTemp ? context.group_id : undefined,
+                    message: CQcode.img(url, imgType),
+                });
+            } else {
+                global
+                    .replyMsg(context, base64 ? CQcode.img64(base64, imgType) : CQcode.img(url, imgType))
+                    .then(r => {
+                        const message_id = _.get(r, 'data.message_id');
+                        if (delTime > 0 && message_id)
+                            setTimeout(() => {
+                                global.bot('delete_msg', { message_id });
+                            }, delTime * 1000);
+                    })
+                    .catch(e => {
+                        console.error(`${global.getTime()} [error] delete msg`);
+                        console.error(e);
+                    });
+            }
+            success = true;
+        })
+        .catch(e => {
+            console.error(`${global.getTime()} [error]`);
             console.error(e);
-          });
-      }
-      success = true;
-    })
-    .catch(e => {
-      console.error(`${global.getTime()} [error]`);
-      console.error(e);
-      global.replyMsg(context, replys.setuError, at);
-    })
-    .finally(() => {
-      if (!success) logger.releaseQuota(context.user_id, 'setu');
-    });
+            global.replyMsg(context, replys.setuError, at);
+        })
+        .finally(() => {
+            if (!success) logger.releaseQuota(context.user_id, 'setu');
+        });
 
-  return true;
+    return true;
 }
 
 export default sendSetu;
