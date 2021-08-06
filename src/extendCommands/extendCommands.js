@@ -34,7 +34,7 @@ const commands = [
         "config": "roll"
     },
     {
-        "listen": (context) => context.message === '!poke',
+        "listen": (context) => context.message.substr(0,5) === '!poke',
         "module": "poke",
         "exec": (module, context, config) => module(context, config),
         "config": "poke"
