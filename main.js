@@ -696,7 +696,7 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
   }
     const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
-    if (!forward && !global.FLAG_DEBUG) {
+    if (!forward || !extendConfig.forward.enabled) {
         switch (context.message_type) {
             case 'private':
                 if (global.config.bot.debug) {
@@ -747,7 +747,7 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                     console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
                     console.log(logMsg);
                 }
-                return bot('send_group_msg', {
+                return bot('send_group_forward_msg', {
                     group_id: context.group_id,
                     type: 'node',
                     data: {
