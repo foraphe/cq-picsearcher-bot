@@ -33,11 +33,8 @@ const roll = require('./src/extendCommands/roll');
 const bot = new CQWebSocket(global.config.cqws);
 const rand = RandomSeed.create();
 
-const FLAG_DEBUG = true;
-
 // 全局变量
 globalReg({
-  FLAG_DEBUG,
   extendConfig,
   bot,
   replyMsg,
@@ -696,7 +693,7 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
   }
     const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
-    if (!forward || !extendConfig.forward.enabled) {
+    if ((!forward || !extendConfig.forward.enabled) && !global.extendConfig.FLAG_DEBUG) {
         switch (context.message_type) {
             case 'private':
                 if (global.config.bot.debug) {
