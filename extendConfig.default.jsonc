@@ -24,5 +24,6 @@
         "enabled": true,
         "user_id": 1000000000,
         "nickname": " "
-    }
+    },
+    "FLAG_DEBUG": false //调试模式
 }

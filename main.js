@@ -732,12 +732,8 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                     console.log(logMsg);
                 }
                 return bot('send_private_msg', {
-                    type: 'node',
-                    data: {
-                        user_id: global.extendConfig.forward.user_id,
-                        nickname: global.extendConfig.forward.nickname,
-                        content: message
-                    }
+                    user_id: context.user_id,
+                    message,
                 });
             case 'group':
                 if (global.config.bot.debug) {
@@ -746,12 +742,14 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                 }
                 return bot('send_group_forward_msg', {
                     group_id: context.group_id,
-                    type: 'node',
-                    data: {
-                        'user_id': global.extendConfig.forward.user_id,
-                        'nickname': global.extendConfig.forward.nickname,
-                        'content': message
-                    }
+                    messages: [{
+                        type: 'node',
+                        data: {
+                            'user_id': global.extendConfig.forward.user_id,
+                            'nickname': global.extendConfig.forward.nickname,
+                            'content': message
+                        }
+                    }]
                 });
             }
         }
