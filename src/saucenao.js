@@ -12,7 +12,7 @@ const snDB = {
   all: 999,
   pixiv: 5,
   danbooru: 9,
-  doujin: 18,
+  doujin: 38,
   anime: 21,
 };
 
@@ -57,6 +57,18 @@ async function doSearch(imgURL, db, debug = false) {
         // 确保回应正确
         if (typeof data !== 'object') throw ret;
         if (data.results && data.results.length > 0) {
+          data.results.forEach(({ header }) => (header.similarity = parseFloat(header.similarity)));
+          if (db === snDB.all && data.results[0].header.index_id !== snDB.pixiv) {
+            const firstSim = data.results[0].header.similarity;
+            const pixivIndex = data.results.findIndex(
+              // 给一点点权重
+              ({ header: { similarity, index_id } }) => index_id === snDB.pixiv && similarity * 1.03 >= firstSim
+            );
+            if (pixivIndex !== -1) {
+              const pixivResults = data.results.splice(pixivIndex, 1);
+              data.results.unshift(...pixivResults);
+            }
+          }
           let {
             header: {
               short_remaining, // 短时剩余
@@ -72,11 +84,19 @@ async function doSearch(imgURL, db, debug = false) {
               member_id, // 可能 pixiv uid
               eng_name, // 本子名
               jp_name, // 本子名
+              source, // 来源
+              author, // 作者
+              artist, // 作者
             },
           } = data.results[0];
+          const simText = similarity.toFixed(2);
+          let sourceTitle = null;
+          if (!/^https?:\/\//.test(source)) {
+            sourceTitle = source;
+            source = null;
+          }
 
           let url = ''; // 结果链接
-          let source = null;
           if (ext_urls) {
             url = ext_urls[0];
             if (index_id === snDB.pixiv) {
@@ -106,14 +126,15 @@ async function doSearch(imgURL, db, debug = false) {
             }
             url = url.replace('http://', 'https://');
             // 获取来源
-            source = await getSource(url).catch(() => null);
+            if (!source) source = await getSource(url).catch(() => null);
+            if (source && source.includes('i.pximg.net')) {
+              source = source.replace(/.*\/(\d+).*?$/, 'https://pixiv.net/i/$1');
+            }
           }
 
-          if (!title) title = url.indexOf('anidb.net') === -1 ? ' 搜索结果' : ' AniDB';
-
-          let doujinName = jp_name || eng_name; // 本子名
-
-          if (member_name && member_name.length > 0) title = `\n「${title}」/「${member_name}」`;
+          title = title || sourceTitle;
+          author = member_name || author || artist;
+          if (author && author.length) title = `「${title}」/「${author}」`;
 
           // 剩余搜图次数
           if (long_remaining < 20) warnMsg += `saucenao-${hostIndex}：注意，24h内搜图次数仅剩${long_remaining}次\n`;
@@ -122,10 +143,9 @@ async function doSearch(imgURL, db, debug = false) {
           }
 
           // 相似度
-          similarity = parseFloat(similarity).toFixed(2);
           if (similarity < global.config.bot.saucenaoLowAcc) {
             lowAcc = true;
-            warnMsg += `相似度 ${similarity}% 过低，如果这不是你要找的图，那么可能：确实找不到此图/图为原图的局部图/图清晰度太低/搜索引擎尚未同步新图\n`;
+            warnMsg += `相似度 ${simText}% 过低，如果这不是你要找的图，那么可能：确实找不到此图/图为原图的局部图/图清晰度太低/搜索引擎尚未同步新图\n`;
             if (global.config.bot.useAscii2dWhenLowAcc && (db === snDB.all || db === snDB.pixiv))
               warnMsg += '自动使用 ascii2d 进行搜索\n';
           }
@@ -133,7 +153,7 @@ async function doSearch(imgURL, db, debug = false) {
           // 回复的消息
           msg = await getShareText({
             url,
-            title: `SauceNAO (${similarity}%)${title}`,
+            title: [`SauceNAO (${simText}%)`, title].filter(v => v).join('\n'),
             thumbnail:
               global.config.bot.hideImgWhenLowAcc && similarity < global.config.bot.saucenaoLowAcc ? null : thumbnail,
             author_url: member_id && url.indexOf('pixiv.net') >= 0 ? `https://pixiv.net/u/${member_id}` : null,
@@ -143,10 +163,11 @@ async function doSearch(imgURL, db, debug = false) {
           success = true;
 
           // 如果是本子
+          const doujinName = jp_name || eng_name; // 本子名
           if (doujinName) {
-            doujinName = doujinName.replace('(English)', '');
             if (global.config.bot.getDojinDetailFromNhentai) {
-              const doujin = await nhentai(doujinName).catch(e => {
+              const searchName = (eng_name || jp_name).replace('(English)', '').replace(/_/g, '/');
+              const doujin = await nhentai(searchName).catch(e => {
                 logError(`${global.getTime()} [error] nhentai`);
                 logError(e);
                 return false;
@@ -158,14 +179,13 @@ async function doSearch(imgURL, db, debug = false) {
                 }`;
                 url = `https://nhentai.net/g/${doujin.id}/`;
               } else {
-                success = false;
-                warnMsg +=
-                  '没有在 nhentai 找到对应的本子，或者可能是此 query 因 bug 而无法在 nhentai 中获得搜索结果 _(:3」∠)_\n';
+                if (db === snDB.all) success = false;
+                warnMsg += '貌似没有在 nhentai 找到对应的本子 _(:3」∠)_\n';
               }
             }
             msg = await getShareText({
               url,
-              title: `(${similarity}%) ${doujinName}`,
+              title: `(${simText}%) ${doujinName}`,
               thumbnail:
                 !(global.config.bot.hideImgWhenLowAcc && similarity < global.config.bot.saucenaoLowAcc) && thumbnail,
             });
@@ -174,19 +194,14 @@ async function doSearch(imgURL, db, debug = false) {
           // 处理返回提示
           if (warnMsg.length > 0) warnMsg = warnMsg.trim();
         } else if (data.header.message) {
-          switch (data.header.message) {
-            case 'Specified file no longer exists on the remote server!':
-              msg = '该图片已过期，请尝试二次截图后发送';
-              break;
-
-            case 'Problem with remote server...':
-              msg = `saucenao-${hostIndex} 远程服务器出现问题，请稍后尝试重试`;
-              break;
-
-            default:
-              logError(data);
-              msg = `saucenao-${hostIndex} ${data.header.message}`;
-              break;
+          const retMsg = data.header.message;
+          if (retMsg.startsWith('Specified file no longer exists on the remote server')) {
+            msg = '该图片已过期，请尝试二次截图后发送';
+          } else if (retMsg.startsWith('Problem with remote server')) {
+            msg = `saucenao-${hostIndex} 远程服务器出现问题，请稍后尝试重试`;
+          } else {
+            logError(data);
+            msg = `saucenao-${hostIndex} ${retMsg}`;
           }
         } else {
           logError(`${global.getTime()} [error] saucenao[${hostIndex}][data]`);

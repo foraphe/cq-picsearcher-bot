@@ -1,13 +1,15 @@
 import _, { random } from 'lodash';
-import { getProxyURL, getMaster1200 } from './pximg';
+import { getProxyURL } from './pximg';
 import CQcode from '../CQcode';
 import { URL } from 'url';
 import NamedRegExp from 'named-regexp-groups';
 import '../utils/jimp.plugin';
 import Jimp from 'jimp';
+import urlShorten from '../urlShorten';
+import logger from '../logger';
 const Axios = require('../axiosProxy');
 
-const zza = Buffer.from('aHR0cHM6Ly9hcGkubG9saWNvbi5hcHAvc2V0dS96aHV6aHUucGhw', 'base64').toString('utf8');
+const API_URL = 'https://api.lolicon.app/setu/v2';
 
 const PIXIV_404 = Symbol('Pixiv image 404');
 
@@ -41,63 +43,62 @@ function checkBase64RealSize(base64) {
   return base64.length && base64.length * 0.75 < 4000000;
 }
 
-async function getAntiShieldingBase64(url) {
-  const setting = global.config.bot.setu;
-  if (setting.antiShielding) {
-    try {
-      const origBase64 = await imgAntiShielding(url);
-      if (checkBase64RealSize(origBase64)) return origBase64;
-    } catch (error) {
-      // 原图过大
-    }
-    if (setting.size1200) return false;
-    const m1200Base64 = await imgAntiShielding(getMaster1200(url));
-    if (checkBase64RealSize(m1200Base64)) return m1200Base64;
+async function getAntiShieldingBase64(url, fallbackUrl) {
+  try {
+    const origBase64 = await imgAntiShielding(url);
+    if (checkBase64RealSize(origBase64)) return origBase64;
+  } catch (error) {
+    // 原图过大
   }
-  return false;
+  if (!fallbackUrl) return;
+  const m1200Base64 = await imgAntiShielding(fallbackUrl);
+  if (checkBase64RealSize(m1200Base64)) return m1200Base64;
 }
 
-function sendSetu(context, logger) {
+function sendSetu(context, at = true) {
+  const setuReg = new NamedRegExp(global.config.bot.regs.setu);
+  const setuRegExec = setuReg.exec(CQcode.unescape(context.message));
+  if (!setuRegExec) return false;
+
   const setting = global.config.bot.setu;
   const replys = global.config.bot.replys;
   const proxy = setting.pximgProxy.trim();
-  const setuReg = new NamedRegExp(global.config.bot.regs.setu);
-  const setuRegExec = setuReg.exec(context.message);
-  if (setuRegExec) {
-    // 普通
-    const limit = {
-      value: setting.limit,
-      cd: setting.cd,
-    };
-    let delTime = setting.deleteTime;
+  const isGroupMsg = context.message_type === 'group';
 
-    const regGroup = setuRegExec.groups || {};
-    const r18 =
-      regGroup.r18 && !(context.group_id && setting.r18OnlyInWhite && !setting.whiteGroup.includes(context.group_id));
-    const keyword = (regGroup.keyword && `&keyword=${encodeURIComponent(regGroup.keyword)}`) || false;
+  // 普通
+  const limit = {
+    value: setting.limit,
+    cd: setting.cd,
+  };
+  let delTime = setting.deleteTime;
 
-    // 群聊还是私聊
-    if (context.group_id) {
-      // 群白名单
-      if (setting.whiteGroup.includes(context.group_id)) {
-        limit.cd = setting.whiteCd;
-        delTime = setting.whiteDeleteTime;
-      } else if (setting.whiteOnly) {
-        global.replyMsg(context, replys.setuReject);
-        return true;
-      }
-    } else {
-      if (!setting.allowPM) {
-        global.replyMsg(context, replys.setuReject);
-        return true;
-      }
-      limit.cd = 0; // 私聊无cd
-    }
+  const regGroup = setuRegExec.groups || {};
+  const r18 = regGroup.r18 && !(isGroupMsg && setting.r18OnlyInWhite && !setting.whiteGroup.includes(context.group_id));
+  const keyword = regGroup.keyword ? regGroup.keyword.split('&') : undefined;
+  const privateR18 = setting.r18OnlyPrivate && r18 && isGroupMsg;
 
-    if (!logger.canSearch(context.user_id, limit, 'setu')) {
-      global.replyMsg(context, replys.setuLimit, true);
+  // 群聊还是私聊
+  if (isGroupMsg) {
+    // 群白名单
+    if (setting.whiteGroup.includes(context.group_id)) {
+      limit.cd = setting.whiteCd;
+      delTime = setting.whiteDeleteTime;
+    } else if (setting.whiteOnly) {
+      global.replyMsg(context, replys.setuReject);
       return true;
     }
+  } else {
+    if (!setting.allowPM) {
+      global.replyMsg(context, replys.setuReject);
+      return true;
+    }
+    limit.cd = 0; // 私聊无cd
+  }
+
+  if (!logger.applyQuota(context.user_id, limit, 'setu')) {
+    global.replyMsg(context, replys.setuLimit, at);
+    return true;
+  }
 
     Axios.get(
       `${zza}?r18=${r18 ? 1 : 0}${keyword || ''}${setting.size1200 ? '&size1200' : ''}${setting.apikey ? '&apikey=' + setting.apikey.trim() : ''
@@ -118,27 +119,36 @@ function sendSetu(context, logger) {
 
         global.replyMsg(context, `${ret.url} (p${ret.p})`, true);
 
-        const url =
-          proxy === ''
-            ? getProxyURL(ret.file)
-            : new URL(/(?<=https:\/\/i.pximg.net\/).+/.exec(ret.file)[0], proxy).toString();
+      const getReqUrl = url => (proxy ? getSetuUrlByTemplate(proxy, setu, url) : getProxyURL(url));
+      const url = getReqUrl(setuUrl);
+      const fallbackUrl = setting.size1200 ? undefined : getReqUrl(setu.urls.regular);
 
-        // 反和谐
-        const base64 = await getAntiShieldingBase64(url).catch(e => {
+      // 反和谐
+      const base64 =
+        !privateR18 &&
+        isGroupMsg &&
+        setting.antiShielding &&
+        (await getAntiShieldingBase64(url, fallbackUrl).catch(e => {
           console.error(`${global.getTime()} [error] anti shielding`);
-          console.error(ret.file);
+          console.error(setuUrl);
           console.error(e);
           if (String(e).includes('Could not find MIME for Buffer')) return PIXIV_404;
           global.replyMsg(context, '反和谐发生错误，图片将原样发送，详情请查看错误日志');
-          return false;
+        }));
+
+      if (base64 === PIXIV_404) {
+        global.replyMsg(context, '图片发送失败，可能是网络问题/插画已被删除/原图地址失效');
+        return;
+      }
+
+      const imgType = delTime === -1 ? 'flash' : null;
+      if (privateR18) {
+        global.bot('send_private_msg', {
+          user_id: context.user_id,
+          group_id: setting.r18OnlyPrivateAllowTemp ? context.group_id : undefined,
+          message: CQcode.img(url, imgType),
         });
-
-        if (base64 === PIXIV_404) {
-          global.replyMsg(context, '图片发送失败，可能是网络问题/插画已被删除/原图地址失效');
-          return;
-        }
-
-        const imgType = delTime === -1 ? 'flash' : null;
+      } else {
         global
           .replyMsg(context, base64 ? CQcode.img64(base64, imgType) : CQcode.img(url, imgType))
           .then(r => {
@@ -152,16 +162,25 @@ function sendSetu(context, logger) {
             console.error(`${global.getTime()} [error] delete msg`);
             console.error(e);
           });
-        logger.doneSearch(context.user_id, 'setu');
-      })
-      .catch(e => {
-        console.error(`${global.getTime()} [error]`);
-        console.error(e);
-        global.replyMsg(context, replys.setuError, true);
-      });
-    return true;
-  }
-  return false;
+      }
+      success = true;
+    })
+    .catch(e => {
+      console.error(`${global.getTime()} [error]`);
+      console.error(e);
+      global.replyMsg(context, replys.setuError, at);
+    })
+    .finally(() => {
+      if (!success) logger.releaseQuota(context.user_id, 'setu');
+    });
+
+  return true;
 }
 
 export default sendSetu;
+
+function getSetuUrlByTemplate(tpl, setu, url) {
+  const path = new URL(url).pathname.replace(/^\//, '');
+  if (!/{{.+}}/.test(tpl)) return new URL(path, tpl).href;
+  return _.template(tpl, { interpolate: /{{([\s\S]+?)}}/g })({ path, ..._.pick(setu, ['pid', 'p', 'uid', 'ext']) });
+}

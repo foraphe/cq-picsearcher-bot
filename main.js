@@ -6,8 +6,8 @@ import saucenao, { snDB } from './src/saucenao';
 import whatanime from './src/whatanime';
 import ascii2d from './src/ascii2d';
 import CQ from './src/CQcode';
-import PSCache from './src/cache';
-import Logger from './src/Logger';
+import psCache from './src/cache';
+import logger from './src/logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
 import Akhr from './src/plugin/akhr';
@@ -30,7 +30,6 @@ const choices = require('./src/extendCommands/choices');
 const sudo = require('./src/extendCommands/sudo');
 
 const bot = new CQWebSocket(global.config.cqws);
-const logger = new Logger();
 const rand = RandomSeed.create();
 
 const FLAG_DEBUG = true;
@@ -44,13 +43,6 @@ globalReg({
   parseArgs,
   replySearchMsgs,
   sendGroupForwardMsg,
-});
-
-// 初始化
-let psCache = global.config.bot.cache.enable ? new PSCache() : null;
-event.on('reload', () => {
-  if (global.config.bot.cache.enable && !psCache) psCache = new PSCache();
-  setBotEventListener();
 });
 
 // 好友请求
@@ -120,6 +112,7 @@ function setBotEventListener() {
   }
 }
 setBotEventListener();
+event.on('reload', setBotEventListener);
 
 // 连接相关监听
 bot
@@ -158,7 +151,7 @@ async function commonHandle(e, context) {
   if (context.user_id === bot._qq) return true;
 
   // 黑名单检测
-  if (Logger.checkBan(context.user_id, context.group_id)) return true;
+  if (logger.checkBan(context.user_id, context.group_id)) return true;
 
   // 语言库
   if (corpus(context)) return true;
@@ -200,6 +193,11 @@ async function commonHandle(e, context) {
   // reminder
   if (global.config.bot.reminder.enable) {
     if (rmdHandler(context)) return true;
+  }
+
+  // setu
+  if (global.config.bot.setu.enable) {
+    if (sendSetu(context)) return true;
   }
 
   //  反哔哩哔哩小程序
@@ -251,11 +249,11 @@ function adminPrivateMsg(e, context) {
   // Ban
   const { 'ban-u': bu, 'ban-g': bg } = args;
   if (bu && typeof bu === 'number') {
-    Logger.ban('u', bu);
+    logger.ban('u', bu);
     replyMsg(context, `已封禁用户${bu}`);
   }
   if (bg && typeof bg === 'number') {
-    Logger.ban('g', bg);
+    logger.ban('g', bg);
     replyMsg(context, `已封禁群组${bg}`);
   }
 
@@ -469,13 +467,13 @@ async function searchImg(context, customDB = -1) {
   for (const img of imgs) {
     // 指令：获取图片链接
     if (args['get-url']) {
-      replyMsg(context, img.url.replace(/\/\d+\/+\d+-/, '/0/0-').replace(/\?.*$/, ''));
+      replyMsg(context, img.url);
       continue;
     }
 
     // 获取缓存
-    if (global.config.bot.cache.enable && !args.purge) {
-      const cache = await psCache.getCache(img, db);
+    if (psCache.enable && !args.purge) {
+      const cache = psCache.get(img, db);
       if (cache) {
         const msgs = cache.map(msg => `${CQ.escape('[缓存]')} ${msg}`);
         if (msgs.length > 1 && global.config.bot.groupForwardSearchResult && context.message_type === 'group') {
@@ -488,7 +486,7 @@ async function searchImg(context, customDB = -1) {
     // 检查搜图次数
     if (
       context.user_id !== global.config.bot.admin &&
-      !logger.canSearch(context.user_id, global.config.bot.searchLimit)
+      !logger.applyQuota(context.user_id, { value: global.config.bot.searchLimit })
     ) {
       replyMsg(context, global.config.bot.replys.personLimit, false, true);
       return;
@@ -506,6 +504,7 @@ async function searchImg(context, customDB = -1) {
     const Replier = searchingMap.getReplier(img, db);
     const needCacheMsgs = [];
     let success = true;
+    let hasSucc = false;
     let snLowAcc = false;
     let useAscii2d = args.a2d;
     let useWhatAnime = db === snDB.anime;
@@ -514,6 +513,7 @@ async function searchImg(context, customDB = -1) {
     if (!useAscii2d) {
       const snRes = await saucenao(img.url, db, args.debug || global.config.bot.debug);
       if (!snRes.success) success = false;
+      if (snRes.success) hasSucc = true;
       if (snRes.lowAcc) snLowAcc = true;
       if (
         !useWhatAnime &&
@@ -530,16 +530,16 @@ async function searchImg(context, customDB = -1) {
 
     // ascii2d
     if (useAscii2d) {
-      const { color, bovw, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({
-        asErr,
-      }));
+      const { color, bovw, success: asSuc, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({ asErr }));
       if (asErr) {
+        success = false;
         const errMsg = (asErr.response && asErr.response.data.length < 50 && `\n${asErr.response.data}`) || '';
         await Replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
       } else {
-        success = true;
+        if (asSuc) hasSucc = true;
+        if (!asSuc) success = false;
         await Replier.reply(color, bovw);
         needCacheMsgs.push(color, bovw);
       }
@@ -548,17 +548,18 @@ async function searchImg(context, customDB = -1) {
     // 搜番
     if (useWhatAnime) {
       const waRet = await whatanime(img.url, args.debug || global.config.bot.debug);
+      if (waRet.success) hasSucc = true;
       if (!waRet.success) success = false; // 如果搜番有误也视作不成功
-      await Replier.reply(waRet.msg);
-      if (waRet.msg.length > 0) needCacheMsgs.push(waRet.msg);
+      await Replier.reply(...waRet.msgs);
+      if (waRet.msgs.length > 0) needCacheMsgs.push(...waRet.msgs);
     }
 
-    if (success) logger.doneSearch(context.user_id);
+    if (!hasSucc) logger.releaseQuota(context.user_id);
     Replier.end();
 
     // 将需要缓存的信息写入数据库
-    if (global.config.bot.cache.enable && success) {
-      await psCache.addCache(img, db, needCacheMsgs);
+    if (psCache.enable && success) {
+      psCache.set(img, db, needCacheMsgs);
     }
   }
 }
@@ -570,15 +571,15 @@ function doOCR(context) {
   const langSearch = /(?<=--lang=)[a-zA-Z]{2,3}/.exec(msg);
   if (langSearch) lang = langSearch[0];
 
-  const handleOcrResult = ret =>
-    replyMsg(context, ret.join('\n')).catch(e => {
-      replyMsg(context, 'OCR识别发生错误');
-      console.error(`${global.getTime()} [error] OCR`);
-      console.error(e);
-    });
-
   for (const img of imgs) {
-    ocr.default(img, lang).then(handleOcrResult);
+    ocr
+      .default(img, lang)
+      .then(results => replyMsg(context, results.join('\n')))
+      .catch(e => {
+        replyMsg(context, 'OCR发生错误');
+        console.error(`${global.getTime()} [error] OCR`);
+        console.error(e);
+      });
   }
 }
 
@@ -607,8 +608,6 @@ function doAkhr(context) {
     const imgs = getImgs(msg);
 
     const handleWords = words => {
-      // fix some ...
-      if (global.config.bot.akhr.ocr === 'ocr.space') words = _.map(words, w => w.replace(/冫口了/g, '治疗'));
       replyMsg(context, CQ.img64(Akhr.getResultImg(words)));
     };
 
@@ -639,7 +638,7 @@ function getImgs(msg) {
   while (search) {
     result.push({
       file: CQ.unescape(search[1]),
-      url: CQ.unescape(search[2]),
+      url: getUniversalImgURL(CQ.unescape(search[2])),
     });
     search = reg.exec(msg);
   }
@@ -773,6 +772,7 @@ function replySearchMsgs(context, ...msgs) {
     return asyncMap(msgs, msg =>
       bot('send_private_msg', {
         user_id: context.user_id,
+        group_id: global.config.bot.pmSearchResultTemp ? context.group_id : undefined,
         message: msg,
       })
     );
@@ -831,4 +831,11 @@ function parseArgs(str, enableArray = false, _key = null) {
 
 function debugMsgDeleteBase64Content(msg) {
   return msg.replace(/base64:\/\/[a-z\d+/=]+/gi, '(base64)');
+}
+
+function getUniversalImgURL(url) {
+  return url
+    .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
+    .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')
+    .replace(/\?.*$/, '');
 }
