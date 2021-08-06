@@ -745,9 +745,9 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                     messages: [{
                         type: 'node',
                         data: {
-                            'user_id': global.extendConfig.forward.user_id,
-                            'nickname': global.extendConfig.forward.nickname,
-                            'content': message
+                            uin: global.extendConfig.forward.user_id,
+                            name: global.extendConfig.forward.nickname,
+                            content: message
                         }
                     }]
                 });
