@@ -736,26 +736,33 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                     console.log(logMsg);
                 }
                 return bot('send_private_msg', {
-                    type: 'node',
-                    data: {
-                        user_id: global.extendConfig.forward.user_id,
-                        nickname: global.extendConfig.forward.nickname,
-                        content: message
-                    }
+                    user_id: context.user_id,
+                    message,
                 });
             case 'group':
                 if (global.config.bot.debug) {
                     console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
                     console.log(logMsg);
                 }
-                return bot('send_group_msg', {
+                return bot('send_group_forward_msg', {
                     group_id: context.group_id,
-                    type: 'node',
-                    data: {
-                        'user_id': global.extendConfig.forward.user_id,
-                        'nickname': global.extendConfig.forward.nickname,
-                        'content': message
-                    }
+                    message: [{
+                        type: 'node',
+                        data: {
+                            'user_id': global.extendConfig.forward.user_id,
+                            'nickname': global.extendConfig.forward.nickname,
+                            'content': message
+                        }
+                    }]
+                });
+            case 'discuss':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_discuss_msg', {
+                    discuss_id: context.discuss_id,
+                    message,
                 });
             }
         }
