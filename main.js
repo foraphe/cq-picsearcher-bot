@@ -25,9 +25,11 @@ import asyncMap from './src/utils/asyncMap';
 const ocr = require('./src/plugin/ocr');
 
 const extendCommands = require('./src/extendCommands/extendCommands');
-const extendConfig = require('./src/extendCommands/extendConfig').load();
+const extendConfigLoader = require('./src/extendCommands/extendConfig')
+let extendConfig = extendConfigLoader.load();
 const choices = require('./src/extendCommands/choices');
 const sudo = require('./src/extendCommands/sudo');
+const roll = require('./src/extendCommands/roll');
 
 const bot = new CQWebSocket(global.config.cqws);
 const rand = RandomSeed.create();
@@ -37,12 +39,22 @@ const FLAG_DEBUG = true;
 // 全局变量
 globalReg({
   FLAG_DEBUG,
+  extendConfig,
   bot,
   replyMsg,
   sendMsg2Admin,
   parseArgs,
   replySearchMsgs,
   sendGroupForwardMsg,
+});
+
+// 初始化
+let psCache = global.config.bot.cache.enable ? new PSCache() : null;
+event.on('reload', () => {
+  if (global.config.bot.cache.enable && !psCache) psCache = new PSCache();
+  extendConfig = extendConfigLoader.load();
+  globalReg({ extendConfig });
+  setBotEventListener();
 });
 
 // 好友请求

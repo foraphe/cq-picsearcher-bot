@@ -112,7 +112,11 @@ function sendSetu(context, at = true) {
           return;
         }
 
-        if (r18) {
+        if (
+          !global.extendConfig.error &&
+          (global.extendConfig.misc.setu.privateAll ||
+            (global.extendConfig.misc.setu.privateR18 && r18))
+        ) {
           if (context.message_type !== 'private') global.replyMsg(context, '结果将私聊发送');
           context.message_type = 'private';
         }
