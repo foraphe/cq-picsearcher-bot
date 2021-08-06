@@ -694,7 +694,7 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
   }
     const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
-    if ((!forward || !extendConfig.forward.enabled) && !global.extendConfig.FLAG_DEBUG) {
+    if (!forward || !extendConfig.forward.enabled) {
         switch (context.message_type) {
             case 'private':
                 if (global.config.bot.debug) {
@@ -751,6 +751,15 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
                             'content': message
                         }
                     }]
+                });
+            case 'discuss':
+                if (global.config.bot.debug) {
+                    console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
+                    console.log(logMsg);
+                }
+                return bot('send_discuss_msg', {
+                    discuss_id: context.discuss_id,
+                    message,
                 });
             }
         }

@@ -16,14 +16,15 @@
     },
     "misc": {
         "setu": {
-            "privateAll": false,
-            "privateR18": true
+            "privateAll": false, //私聊发送setu
+            "privateR18": true,
+            "forward": false //以转发形式发送setu, 需要将下方 forward 条目中的 enabled 设置为 true
         }
     },
     "forward": { //使用自定义转发发送消息
         "enabled": true,
-        "user_id": 1000000000,
-        "nickname": " "
+        "user_id": 1000000000, //转发的消息发送者QQ号, 可能用于确定头像
+        "nickname": " " //转发的消息发送者昵称
     },
     "FLAG_DEBUG": false //调试模式
 }
