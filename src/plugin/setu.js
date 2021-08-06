@@ -163,7 +163,7 @@ function sendSetu(context, at = true) {
                 });
             } else {
                 global
-                    .replyMsg(context, base64 ? CQcode.img64(base64, imgType) : CQcode.img(url, imgType), false, false, global.extendConfig.error ? false : global.extendConfig.misc.setu.forward);
+                    .replyMsg(context, base64 ? CQcode.img64(base64, imgType) : CQcode.img(url, imgType), false, false, global.extendConfig.error ? false : global.extendConfig.misc.setu.forward)
                     .then(r => {
                         const message_id = _.get(r, 'data.message_id');
                         if (delTime > 0 && message_id)
