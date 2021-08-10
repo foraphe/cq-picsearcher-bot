@@ -21,10 +21,13 @@
             "forward": false //以转发形式发送setu, 需要将下方 forward 条目中的 enabled 设置为 true
         }
     },
-    "forward": { //使用自定义转发发送消息
-        "enabled": true,
-        "user_id": 1000000000, //转发的消息发送者QQ号, 可能用于确定头像
-        "nickname": " " //转发的消息发送者昵称
-    },
+  "forward": { //使用自定义转发发送消息
+    "enabled": true,
+    "user_id": 1000000000, //转发的消息发送者QQ号, 可能用于确定头像
+    "nickname": " " //转发的消息发送者昵称
+  },
+  "poke": { //发送!poke可让bot戳一戳自己
+    "enabled": true
+  },
     "FLAG_DEBUG": false //调试模式
 }
