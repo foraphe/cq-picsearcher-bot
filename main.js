@@ -481,7 +481,7 @@ async function searchImg(context, customDB = -1) {
     }
 
     // 获取缓存
-    if (psCache.enable && !args.purge) {
+    if (psCache && psCache.enable && !args.purge) {
       const cache = psCache.get(img, db);
       if (cache) {
         const msgs = cache.map(msg => `${CQ.escape('[缓存]')} ${msg}`);
