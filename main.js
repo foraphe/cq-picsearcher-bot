@@ -567,7 +567,7 @@ async function searchImg(context, customDB = -1) {
     Replier.end();
 
     // 将需要缓存的信息写入数据库
-    if (psCache.enable && success) {
+    if (psCache && psCache.enable && success) {
       psCache.set(img, db, needCacheMsgs);
     }
   }
