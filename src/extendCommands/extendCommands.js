@@ -38,6 +38,12 @@ const commands = [
         "module": "poke",
         "exec": (module, context, config) => module(context, config),
         "config": "poke"
+    },
+    {
+    "listen": (context) => context.message.substr(0,10) === '!createfwd',
+        "module": "createfwd",
+        "exec": (module, context, config) => module(context, config),
+        "config": "createfwd"
     }
 ];
 
