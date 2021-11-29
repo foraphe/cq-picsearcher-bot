@@ -30,6 +30,7 @@ const choices = require('./src/extendCommands/choices');
 const sudo = require('./src/extendCommands/sudo');
 const roll = require('./src/extendCommands/roll');
 const poke = require('./src/extendCommands/poke');
+const createfwd = require('./src/extendCommands/createforward');
 
 const bot = new CQWebSocket(global.config.cqws);
 const rand = RandomSeed.create();

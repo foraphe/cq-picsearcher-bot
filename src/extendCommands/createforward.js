@@ -18,3 +18,5 @@ function run(context,config){
     }
     sendGroupForwardMsg(context.group_id, json);
 }
+
+module.exports=run;
