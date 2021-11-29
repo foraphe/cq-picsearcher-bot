@@ -1,5 +1,5 @@
 function sendGroupForwardMsg(group_id, msgs) {
-    return bot('send_group_forward_msg', {
+    return global.bot('send_group_forward_msg', {
       group_id,
       messages: msgs,
     });
