@@ -2,6 +2,43 @@
 
 ## 2021
 
+### 10-24 v2.31.0
+
+- 新增B站动态、直播推送功能
+- 新增 `npm run update` 脚本用于一键更新，会自动判断包管理器，如果目录中存在 `package-lock.json` 则使用 `npm`，否则使用 `yarn`
+- 新增管理者私聊指令 `--update-cqps` 用于远程一键更新，该更新方式是实验性的，建议在可以登上服务器的状态下使用，以免出现意外起不来（
+- 修复 go-cqhttp v1.0.0-beta8 及以上版本无法回复搜图的问题 by @Magic-Xin
+- 修复无法解析B站手机客户端分享的动态短链的问题
+- 配置项变更
+  - A `bot.replys.push`
+  - A `bot.replys.pushCheckInterval`
+
+### 10-24 v2.30.3
+
+- 因 pixiv.cat 在大陆被墙，`bot.setu.sendPximgProxys` 默认配置变更为 `["https://i.pixiv.re/"]`；设置了 `bot.setu.pximgProxy` 的用户也请注意修改
+- setu 使用在线反代时，如果设置了代理，反和谐会走代理下载图片；不反和谐时仍由 go-cqhttp 下载图片，这种情况下如果需要走代理，需要给 go-cqhttp 配置代理
+
+### 10-24 v2.30.2
+
+- 搜图结果中的预览缩略图将主动下载后再发送 by @NekoAria
+
+### 10-06 v2.30.1
+
+- 增加对B站专栏手机版链接的识别
+- 更新一些依赖
+
+### 08-26 v2.30.0
+
+- 更新 pm2 至 v5.1.1，如需更新内存中的 pm2 版本，请在本次更新完后启动之前执行一次 `npm run kill`
+- 使用无系统依赖的 [@napi-rs/canvas](https://github.com/Brooooooklyn/canvas) 代替 [node-canvas](https://github.com/Automattic/node-canvas)
+- 可使用 `.env` 配置环境变量，用于某些特殊情况 ([#239](../../issues/239))
+- 新增 `update:npm` 和 `update:yarn` 两个 npm 脚本，一键更新本项目
+
+### 08-22 v2.29.15
+
+- 哔哩哔哩视频解析防刷屏改进 ([#235](../../issues/235))
+- 增加 ascii2d 错误原因的输出 ([#238](../../issues/238))
+
 ### 07-28 v2.29.14
 
 - 修复一些 saucenao 错误原因的判断 ([#232](../../issues/232))

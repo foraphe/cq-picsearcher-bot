@@ -1,8 +1,8 @@
 import _ from 'lodash';
 import Koa from 'koa';
-import Router from 'koa-router';
+import Router from '@koa/router';
 import { createHttpTerminator } from 'http-terminator';
-import event from '../event';
+import emitter from '../emitter';
 const Axios = require('../axiosProxy');
 
 const safeKey = Math.random().toString(36).slice(2);
@@ -70,9 +70,9 @@ async function startProxy() {
 }
 
 startProxy();
-event.on('reload', startProxy);
+emitter.onConfigReload(startProxy);
 
-export function getProxyURL(url) {
+export function getLocalReverseProxyURL(url) {
   return `http://${usePximgAddr}/?key=${safeKey}&url=${url}`;
 }
 

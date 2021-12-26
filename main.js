@@ -6,6 +6,7 @@ import saucenao, { snDB } from './src/saucenao';
 import whatanime from './src/whatanime';
 import ascii2d from './src/ascii2d';
 import CQ from './src/CQcode';
+import psCache from './src/cache';
 import logger from './src/logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
@@ -16,7 +17,7 @@ import { rmdHandler } from './src/plugin/reminder';
 import broadcast from './src/broadcast';
 import bilibiliHandler from './src/plugin/bilibili';
 import logError from './src/logError';
-import event from './src/event';
+import emitter from './src/emitter';
 import corpus from './src/plugin/corpus';
 import getGroupFile from './src/plugin/getGroupFile';
 import searchingMap from './src/searchingMap';
@@ -31,6 +32,9 @@ const sudo = require('./src/extendCommands/sudo');
 const roll = require('./src/extendCommands/roll');
 const poke = require('./src/extendCommands/poke');
 const createfwd = require('./src/extendCommands/createforward');
+
+import { execUpdate } from './src/utils/checkUpdate';
+const ocr = require('./src/plugin/ocr');
 
 const bot = new CQWebSocket(global.config.cqws);
 const rand = RandomSeed.create();
@@ -48,7 +52,7 @@ globalReg({
 
 // 初始化
 let psCache = global.config.bot.cache.enable ? new PSCache() : null;
-event.on('reload', () => {
+emitter.onConfigReload(() => {
   if (global.config.bot.cache.enable && !psCache) psCache = new PSCache();
   extendConfig = extendConfigLoader.load();
   globalReg({ extendConfig });
@@ -122,7 +126,7 @@ function setBotEventListener() {
   }
 }
 setBotEventListener();
-event.on('reload', setBotEventListener);
+emitter.onConfigReload(setBotEventListener);
 
 // 连接相关监听
 bot
@@ -172,7 +176,7 @@ async function commonHandle(e, context) {
 
   // 通用指令
   if (context.message === '--help') {
-    replyMsg(context, 'https://github.com/Tsuk1ko/cq-picsearcher-bot/wiki/%E5%A6%82%E4%BD%95%E9%A3%9F%E7%94%A8');
+    replyMsg(context, 'https://git.io/JEMWC');
     return true;
   }
   if (context.message === '--version') {
@@ -277,10 +281,11 @@ function adminPrivateMsg(e, context) {
   // 停止程序（使用 pm2 时相当于重启）
   if (args.shutdown) process.exit();
 
+  // 更新程序
+  if (args['update-cqps']) replyMsg(context, '开始更新，完成后会重新启动').then(execUpdate);
+
   // 重载配置
-  if (args.reload) {
-    loadConfig();
-  }
+  if (args.reload) loadConfig();
 }
 
 // 私聊以及群组@的处理
@@ -292,7 +297,7 @@ async function privateAndAtMsg(e, context) {
 
   if (context.message_type === 'group') {
     try {
-      const rMsgId = _.get(/^\[CQ:reply,id=([-\d]+?)\]/.exec(context.message), 1);
+      const rMsgId = _.get(/^\[CQ:reply,id=(-?\d+).*\]/.exec(context.message), 1);
       if (rMsgId) {
         const { data } = await bot('get_msg', { message_id: Number(rMsgId) });
         if (data) {
@@ -305,7 +310,7 @@ async function privateAndAtMsg(e, context) {
           const rMsg = imgs
             .map(({ file, url }) => `[CQ:image,file=${CQ.escape(file, true)},url=${CQ.escape(url, true)}]`)
             .join('');
-          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=[-\d]+?\]/, rMsg) };
+          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=-?\d+.*?\]/, rMsg) };
         }
       }
     } catch (error) { }
@@ -482,7 +487,7 @@ async function searchImg(context, customDB = -1) {
     }
 
     // 获取缓存
-    if (psCache && psCache.enable && !args.purge) {
+    if (psCache.enable && !args.purge) {
       const cache = psCache.get(img, db);
       if (cache) {
         const msgs = cache.map(msg => `${CQ.escape('[缓存]')} ${msg}`);
@@ -543,7 +548,10 @@ async function searchImg(context, customDB = -1) {
       const { color, bovw, success: asSuc, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({ asErr }));
       if (asErr) {
         success = false;
-        const errMsg = (asErr.response && asErr.response.data.length < 50 && `\n${asErr.response.data}`) || '';
+        const errMsg =
+          (asErr.response && asErr.response.data.length < 100 && `\n${asErr.response.data}`) ||
+          (asErr.message && `\n${asErr.message}`) ||
+          '';
         await Replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
@@ -568,7 +576,7 @@ async function searchImg(context, customDB = -1) {
     Replier.end();
 
     // 将需要缓存的信息写入数据库
-    if (psCache && psCache.enable && success) {
+    if (psCache.enable && success) {
       psCache.set(img, db, needCacheMsgs);
     }
   }
@@ -642,17 +650,12 @@ function doAkhr(context) {
  * @returns 图片URL数组
  */
 function getImgs(msg) {
-  const reg = /\[CQ:image,file=([^,]+),url=([^\]]+)\]/g;
-  const result = [];
-  let search = reg.exec(msg);
-  while (search) {
-    result.push({
-      file: CQ.unescape(search[1]),
-      url: getUniversalImgURL(CQ.unescape(search[2])),
-    });
-    search = reg.exec(msg);
-  }
-  return result;
+  const cqimgs = CQ.from(msg).filter(cq => cq.type === 'image');
+  return cqimgs.map(cq => {
+    const data = cq.pickData(['file', 'url']);
+    data.url = getUniversalImgURL(data.url);
+    return data;
+  });
 }
 
 /**
@@ -694,76 +697,76 @@ function replyMsg(context, message, at = false, reply = false, forward = false) 
   if (context.message_type !== 'private') {
     message = `${reply ? CQ.reply(context.message_id) : ''}${at ? CQ.at(context.user_id) : ''}${message}`;
   }
-    const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
-    if (!forward || !extendConfig.forward.enabled) {
-        switch (context.message_type) {
-            case 'private':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_private_msg', {
-                    user_id: context.user_id,
-                    message,
-                });
-            case 'group':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_group_msg', {
-                    group_id: context.group_id,
-                    message,
-                });
-            case 'discuss':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_discuss_msg', {
-                    discuss_id: context.discuss_id,
-                    message,
-                });
+  const logMsg = global.config.bot.debug && debugMsgDeleteBase64Content(message);
+  if (!forward || !extendConfig.forward.enabled) {
+    switch (context.message_type) {
+      case 'private':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
+          console.log(logMsg);
         }
+        return bot('send_private_msg', {
+          user_id: context.user_id,
+          message,
+        });
+      case 'group':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
+          console.log(logMsg);
+        }
+        return bot('send_group_msg', {
+          group_id: context.group_id,
+          message,
+        });
+      case 'discuss':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
+          console.log(logMsg);
+        }
+        return bot('send_discuss_msg', {
+          discuss_id: context.discuss_id,
+          message,
+        });
     }
-    else {
-        switch (context.message_type) {
-            case 'private':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_private_msg', {
-                    user_id: context.user_id,
-                    message,
-                });
-            case 'group':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_group_forward_msg', {
-                    group_id: context.group_id,
-                    messages: [{
-                        'type': 'node',
-                        'data': {
-                            'uin': global.extendConfig.forward.user_id,
-                            'name': global.extendConfig.forward.nickname,
-                            'content': message
-                        }
-                    }]
-                });
-            case 'discuss':
-                if (global.config.bot.debug) {
-                    console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
-                    console.log(logMsg);
-                }
-                return bot('send_discuss_msg', {
-                    discuss_id: context.discuss_id,
-                    message,
-                });
-            }
+  }
+  else {
+    switch (context.message_type) {
+      case 'private':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复私聊消息 qq=${context.user_id}`);
+          console.log(logMsg);
         }
+        return bot('send_private_msg', {
+          user_id: context.user_id,
+          message,
+        });
+      case 'group':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复群组消息 group=${context.group_id} qq=${context.user_id}`);
+          console.log(logMsg);
+        }
+        return bot('send_group_forward_msg', {
+          group_id: context.group_id,
+          messages: [{
+            'type': 'node',
+            'data': {
+              'uin': global.extendConfig.forward.user_id,
+              'name': global.extendConfig.forward.nickname,
+              'content': message
+            }
+          }]
+        });
+      case 'discuss':
+        if (global.config.bot.debug) {
+          console.log(`${global.getTime()} 回复讨论组消息 discuss=${context.discuss_id} qq=${context.user_id}`);
+          console.log(logMsg);
+        }
+        return bot('send_discuss_msg', {
+          discuss_id: context.discuss_id,
+          message,
+        });
+    }
+  }
 }
 
 /**
@@ -817,6 +820,13 @@ function sendGroupForwardMsg(group_id, msgs) {
   });
 }
 
+function sendGroupMsg(group_id, message) {
+  return bot('send_group_msg', {
+    group_id,
+    message,
+  });
+}
+
 /**
  * 生成随机浮点数
  *
@@ -850,7 +860,7 @@ function debugMsgDeleteBase64Content(msg) {
   return msg.replace(/base64:\/\/[a-z\d+/=]+/gi, '(base64)');
 }
 
-function getUniversalImgURL(url) {
+function getUniversalImgURL(url = '') {
   return url
     .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
     .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')

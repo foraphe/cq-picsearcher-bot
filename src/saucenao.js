@@ -1,9 +1,9 @@
 import _ from 'lodash';
 import nhentai from './nhentai';
 import getSource from './getSource';
-import CQ from './CQcode';
 import pixivShorten from './urlShorten/pixiv';
 import logError from './logError';
+import { getCqImg64FromUrl } from './utils/image';
 const Axios = require('./axiosProxy');
 
 let hostsI = 0;
@@ -174,9 +174,8 @@ async function doSearch(imgURL, db, debug = false) {
               });
               // 有本子搜索结果的话
               if (doujin) {
-                thumbnail = `https://t.nhentai.net/galleries/${doujin.media_id}/cover.${
-                  exts[doujin.images.thumbnail.t]
-                }`;
+                thumbnail = `https://t.nhentai.net/galleries/${doujin.media_id}/cover.${exts[doujin.images.thumbnail.t]
+                  }`;
                 url = `https://nhentai.net/g/${doujin.id}/`;
               } else {
                 if (db === snDB.all) success = false;
@@ -242,7 +241,9 @@ async function confuseURL(url) {
 
 async function getShareText({ url, title, thumbnail, author_url, source }) {
   const texts = [title];
-  if (thumbnail && !global.config.bot.hideImg) texts.push(CQ.img(thumbnail));
+  if (thumbnail && !global.config.bot.hideImg) {
+    texts.push(await getCqImg64FromUrl(thumbnail));
+  }
   if (url) texts.push(await confuseURL(url));
   if (author_url) texts.push(`Author: ${await confuseURL(author_url)}`);
   if (source) texts.push(`Source: ${await confuseURL(source)}`);
