@@ -9,6 +9,7 @@ import CQ from './src/CQcode';
 import logger from './src/logger';
 import RandomSeed from 'random-seed';
 import sendSetu from './src/plugin/setu';
+import psCache from './src/cache';
 import Akhr from './src/plugin/akhr';
 import _ from 'lodash';
 import minimist from 'minimist';
@@ -49,7 +50,6 @@ globalReg({
 });
 
 // 初始化
-let psCache = global.config.bot.cache.enable ? new PSCache() : null;
 emitter.onConfigReload(() => {
   if (global.config.bot.cache.enable && !psCache) psCache = new PSCache();
   extendConfig = extendConfigLoader.load();
