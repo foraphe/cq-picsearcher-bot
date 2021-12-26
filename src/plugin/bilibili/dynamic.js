@@ -62,21 +62,11 @@ const dynamicCard2msg = async (card, forPush = false) => {
     case 2:
       const { description, pictures } = item;
       lines.push(description.trim());
-<<<<<<< HEAD
-      lines.push(...pictures.map(({ img_src }) => CQ.img(img_src)));
-      break;
-
-    // 文字动态
-    case 1: // 转发
-    case 4:
-      const { content } = item;
-      lines.push(content.trim());
-=======
       lines.push(
         ...(config.dynamicImgPreDl
           ? await Promise.all(
-              pictures.map(({ img_src }) => CQ.imgPreDl(img_src, undefined, { timeout: config.imgPreDlTimeout * 1000 }))
-            )
+            pictures.map(({ img_src }) => CQ.imgPreDl(img_src, undefined, { timeout: config.imgPreDlTimeout * 1000 }))
+          )
           : pictures.map(({ img_src }) => CQ.img(img_src)))
       );
       break;
@@ -84,16 +74,11 @@ const dynamicCard2msg = async (card, forPush = false) => {
     // 文字动态
     case 4:
       lines.push(item.content.trim());
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
       break;
 
     // 视频
     case 8:
-<<<<<<< HEAD
-      lines.push(dynamic.trim());
-=======
       if (dynamic) lines.push(dynamic.trim());
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
       lines.push(CQ.img(pic));
       lines.push(title.trim());
       lines.push(`https://www.bilibili.com/video/${bvid}`);
@@ -108,11 +93,7 @@ const dynamicCard2msg = async (card, forPush = false) => {
 
     // 未知
     default:
-<<<<<<< HEAD
-      return `未知的动态类型 type=${type}`;
-=======
       lines.push(`未知的动态类型 type=${type}`);
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
   }
   return lines.join('\n').trim();
 };
@@ -120,27 +101,6 @@ const dynamicCard2msg = async (card, forPush = false) => {
 export const getDynamicInfo = async id => {
   try {
     const {
-<<<<<<< HEAD
-      data: { data },
-    } = await get(`https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/get_dynamic_detail?dynamic_id=${id}`);
-    const dynamic = (({
-      card,
-      desc: {
-        type,
-        dynamic_id_str,
-        bvid,
-        user_profile: {
-          info: { uname },
-        },
-      },
-    }) => ({
-      dyid: dynamic_id_str,
-      type,
-      uname,
-      card: { bvid, ...JSON.parse(card) },
-    }))(data.card);
-    return dynamic2msg(dynamic);
-=======
       data: {
         data: { card },
       },
@@ -148,15 +108,12 @@ export const getDynamicInfo = async id => {
       timeout: 10000,
     });
     return dynamicCard2msg(card);
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
   } catch (e) {
     logError(`${global.getTime()} [error] bilibili get dynamic info ${id}`);
     logError(e);
     return null;
   }
 };
-<<<<<<< HEAD
-=======
 
 const lastDynamicTsMap = new Map();
 
@@ -190,4 +147,3 @@ export const getUserNewDynamicsInfo = async uid => {
     return null;
   }
 };
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
