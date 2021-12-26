@@ -1,18 +1,19 @@
 import Path from 'path';
-import emitter from '../../emitter';
+import event from '../../event';
 
 /**
- * @type {import('@napi-rs/canvas')}
+ * @type {import('canvas')}
  */
-let Canvas = null;
+let canvas = null;
 const loadCanvasModule = () => {
-  if (global.config.bot.akhr.enable && !Canvas) {
-    Canvas = require('@napi-rs/canvas');
-    Canvas.GlobalFonts.registerFromPath(Path.resolve(__dirname, 'fonts/sarasa-gothic-sc-bold.ttf'), 'SarasaSC');
-    Canvas.GlobalFonts.registerFromPath(Path.resolve(__dirname, 'fonts/seguiemj.ttf'), 'SegoeUIEmoji');
+  if (global.config.bot.akhr.enable && !canvas) {
+    canvas = require('canvas');
+    canvas.registerFont(Path.resolve(__dirname, 'fonts/sarasa-gothic-sc-bold.ttf'), { family: 'Sarasa SC' });
+    canvas.registerFont(Path.resolve(__dirname, 'fonts/seguiemj.ttf'), { family: 'Segoe UI Emoji' });
   }
 };
-emitter.onConfigLoad(loadCanvasModule);
+event.onceInit(loadCanvasModule);
+event.on('reload', loadCanvasModule);
 
 const ratio = 2;
 const fullWidth = ratio * 600;
@@ -50,9 +51,9 @@ const colorPlan = {
  * @returns
  */
 function getImg(AKDATA, results, recTags) {
-  const ctx = Canvas.createCanvas(fullWidth, fullHeight).getContext('2d');
+  const ctx = canvas.createCanvas(fullWidth, fullHeight).getContext('2d');
 
-  ctx.font = `${fontSize}px SarasaSC, SegoeUIEmoji`;
+  ctx.font = `${fontSize}px "Sarasa SC", "Segoe UI Emoji"`;
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, fullWidth, fullHeight);
@@ -128,11 +129,11 @@ function getImg(AKDATA, results, recTags) {
   const h = y + cardHeight + ayPadding;
   const img = ctx.getImageData(0, 0, w, h);
 
-  const newCanvas = Canvas.createCanvas(w, h);
+  const newCanvas = canvas.createCanvas(w, h);
   const newCtx = newCanvas.getContext('2d');
   newCtx.putImageData(img, 0, 0);
 
-  return newCanvas.toDataURL('image/png').split(',')[1];
+  return newCanvas.toDataURL().split(',')[1];
 }
 
 export default getImg;

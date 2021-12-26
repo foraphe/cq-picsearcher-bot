@@ -5,7 +5,7 @@ import Path from 'path';
 import draw from './akhr.draw';
 import { get } from 'axios';
 import logError from '../../logError';
-import emitter from '../../emitter';
+import event from '../../event';
 
 const GJZS = '高级资深干员';
 
@@ -13,9 +13,9 @@ const AKDATA_PATH = Path.resolve(__dirname, '../../../data/akhr.json');
 let AKDATA = null;
 let updateInterval = null;
 
-emitter.onConfigReady(init);
+event.onceInit(init);
 
-emitter.onConfigReload(() => {
+event.on('reload', () => {
   if (updateInterval) {
     clearInterval(updateInterval);
     updateInterval = null;

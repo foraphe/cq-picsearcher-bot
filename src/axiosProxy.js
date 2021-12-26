@@ -1,7 +1,7 @@
 import Axios from 'axios';
 import SocksProxyAgent from 'socks-proxy-agent';
 import HttpsProxyAgent from 'https-proxy-agent';
-import emitter from './emitter';
+import event from './event';
 
 /**
  * 从代理字符串获取代理
@@ -24,10 +24,10 @@ function createAxios() {
   });
 }
 
-/** @type {Axios} */
 let client = {};
 
-emitter.onConfigLoad(() => (client = createAxios()));
+event.onceInit(() => (client = createAxios()));
+event.on('reload', () => (client = createAxios()));
 
 module.exports = {
   get client() {
@@ -38,10 +38,5 @@ module.exports = {
   },
   get post() {
     return client.post;
-  },
-  getBase64(url, config = {}) {
-    return client
-      .get(url, { ...config, responseType: 'arraybuffer' })
-      .then(r => Buffer.from(r.data, 'binary').toString('base64'));
   },
 };

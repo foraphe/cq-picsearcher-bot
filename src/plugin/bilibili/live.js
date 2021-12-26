@@ -1,10 +1,10 @@
+import { get } from 'axios';
 import CQ from '../../CQcode';
 import logError from '../../logError';
 import humanNum from '../../utils/humanNum';
-import { retryGet } from '../../utils/retry';
 
 export const getLiveRoomInfo = id =>
-  retryGet(`https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=${id}`, { timeout: 10000 })
+  get(`https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=${id}`)
     .then(
       ({
         data: {
@@ -31,27 +31,3 @@ export const getLiveRoomInfo = id =>
       logError(e);
       return null;
     });
-
-export const getUserLiveData = async uid => {
-  try {
-    const {
-      data: {
-        data: {
-          name,
-          live_room: { liveStatus, url, title, cover },
-        },
-      },
-    } = await retryGet(`https://api.bilibili.com/x/space/acc/info?mid=${uid}`, { timeout: 10000 });
-    return {
-      status: liveStatus,
-      name,
-      url,
-      title,
-      cover,
-    };
-  } catch (e) {
-    logError(`${global.getTime()} [error] bilibili live data ${uid}`);
-    logError(e);
-    return null;
-  }
-};

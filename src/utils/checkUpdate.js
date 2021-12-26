@@ -1,5 +1,3 @@
-import { spawn } from 'child_process';
-import { resolve } from 'path';
 import _ from 'lodash';
 import { get } from 'axios';
 import removeMd from 'remove-markdown';
@@ -38,19 +36,8 @@ export const checkUpdate = async () => {
         arr.push(removeMd(text.trim(), { stripListLeaders: false }));
       }
     },
-    [`发现新版本 v${latestVersion}`, '']
+    [`发现新版本 v${latestVersion}`]
   );
-  changelogs.push('', '实验性更新指令：--update-cqps', '建议在可以登上服务器的状态下使用，以免出现意外起不来（');
-  global.sendMsg2Admin(changelogs.join('\n'));
+  global.sendMsg2Admin(changelogs.join('\n\n'));
   lastCheck = latestVersion;
-};
-
-export const execUpdate = () => {
-  spawn('npm', ['run', 'update'], {
-    env: { ...process.env, NEED_UNREF: 'true' },
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-    cwd: resolve(__dirname, '../..'),
-  }).unref();
 };

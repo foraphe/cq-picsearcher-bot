@@ -2,7 +2,7 @@ import { encode, decode } from '@msgpack/msgpack';
 import klaw from 'klaw-sync';
 import Fse from 'fs-extra';
 import Path from 'path';
-import emitter from './emitter';
+import event from './event';
 
 (OLD_DB_PATH => {
   if (Fse.existsSync(OLD_DB_PATH)) Fse.unlinkSync(OLD_DB_PATH);
@@ -14,7 +14,7 @@ import emitter from './emitter';
 class PSCache {
   constructor() {
     if (this.enable) this.init();
-    emitter.onConfigReload(() => {
+    event.on('reload', () => {
       if (this.active && !this.enable) this.destroy();
       else if (!this.active && this.enable) this.init();
     });
@@ -91,9 +91,9 @@ class PSCache {
         nodir: true,
         depthLimit: 1,
         filter: ({ stats: { mtimeMs } }) => mtimeMs < this.EXPIRE_MS,
-      }).forEach(({ path }) => Fse.removeSync(path));
+      }).forEach(({ path }) => Fse.unlink(path));
     } catch (e) {
-      console.error(`${global.getTime()} clear expired pscache`);
+      console.error(`${global.getTime()} clear expired cache`);
       console.error(e);
     }
   }

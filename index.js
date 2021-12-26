@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { existsSync, renameSync } = require('fs-extra');
 const { resolve } = require('path');
 const {

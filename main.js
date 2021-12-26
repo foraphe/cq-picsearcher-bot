@@ -16,12 +16,11 @@ import { rmdHandler } from './src/plugin/reminder';
 import broadcast from './src/broadcast';
 import bilibiliHandler from './src/plugin/bilibili';
 import logError from './src/logError';
-import emitter from './src/emitter';
+import event from './src/event';
 import corpus from './src/plugin/corpus';
 import getGroupFile from './src/plugin/getGroupFile';
 import searchingMap from './src/searchingMap';
 import asyncMap from './src/utils/asyncMap';
-import { execUpdate } from './src/utils/checkUpdate';
 const ocr = require('./src/plugin/ocr');
 
 const extendCommands = require('./src/extendCommands/extendCommands');
@@ -45,7 +44,6 @@ globalReg({
   parseArgs,
   replySearchMsgs,
   sendGroupForwardMsg,
-  sendGroupMsg,
 });
 
 // 初始化
@@ -124,7 +122,7 @@ function setBotEventListener() {
   }
 }
 setBotEventListener();
-emitter.onConfigReload(setBotEventListener);
+event.on('reload', setBotEventListener);
 
 // 连接相关监听
 bot
@@ -174,7 +172,7 @@ async function commonHandle(e, context) {
 
   // 通用指令
   if (context.message === '--help') {
-    replyMsg(context, 'https://git.io/JEMWC');
+    replyMsg(context, 'https://github.com/Tsuk1ko/cq-picsearcher-bot/wiki/%E5%A6%82%E4%BD%95%E9%A3%9F%E7%94%A8');
     return true;
   }
   if (context.message === '--version') {
@@ -279,11 +277,10 @@ function adminPrivateMsg(e, context) {
   // 停止程序（使用 pm2 时相当于重启）
   if (args.shutdown) process.exit();
 
-  // 更新程序
-  if (args['update-cqps']) replyMsg(context, '开始更新，完成后会重新启动').then(execUpdate);
-
   // 重载配置
-  if (args.reload) loadConfig();
+  if (args.reload) {
+    loadConfig();
+  }
 }
 
 // 私聊以及群组@的处理
@@ -295,7 +292,7 @@ async function privateAndAtMsg(e, context) {
 
   if (context.message_type === 'group') {
     try {
-      const rMsgId = _.get(/^\[CQ:reply,id=(-?\d+).*\]/.exec(context.message), 1);
+      const rMsgId = _.get(/^\[CQ:reply,id=([-\d]+?)\]/.exec(context.message), 1);
       if (rMsgId) {
         const { data } = await bot('get_msg', { message_id: Number(rMsgId) });
         if (data) {
@@ -308,7 +305,7 @@ async function privateAndAtMsg(e, context) {
           const rMsg = imgs
             .map(({ file, url }) => `[CQ:image,file=${CQ.escape(file, true)},url=${CQ.escape(url, true)}]`)
             .join('');
-          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=-?\d+.*?\]/, rMsg) };
+          context = { ...context, message: context.message.replace(/^\[CQ:reply,id=[-\d]+?\]/, rMsg) };
         }
       }
     } catch (error) { }
@@ -546,10 +543,7 @@ async function searchImg(context, customDB = -1) {
       const { color, bovw, success: asSuc, asErr } = await ascii2d(img.url, snLowAcc).catch(asErr => ({ asErr }));
       if (asErr) {
         success = false;
-        const errMsg =
-          (asErr.response && asErr.response.data.length < 100 && `\n${asErr.response.data}`) ||
-          (asErr.message && `\n${asErr.message}`) ||
-          '';
+        const errMsg = (asErr.response && asErr.response.data.length < 50 && `\n${asErr.response.data}`) || '';
         await Replier.reply(`ascii2d 搜索失败${errMsg}`);
         console.error(`${global.getTime()} [error] ascii2d`);
         logError(asErr);
@@ -648,12 +642,17 @@ function doAkhr(context) {
  * @returns 图片URL数组
  */
 function getImgs(msg) {
-  const cqimgs = CQ.from(msg).filter(cq => cq.type === 'image');
-  return cqimgs.map(cq => {
-    const data = cq.pickData(['file', 'url']);
-    data.url = getUniversalImgURL(data.url);
-    return data;
-  });
+  const reg = /\[CQ:image,file=([^,]+),url=([^\]]+)\]/g;
+  const result = [];
+  let search = reg.exec(msg);
+  while (search) {
+    result.push({
+      file: CQ.unescape(search[1]),
+      url: getUniversalImgURL(CQ.unescape(search[2])),
+    });
+    search = reg.exec(msg);
+  }
+  return result;
 }
 
 /**
@@ -818,13 +817,6 @@ function sendGroupForwardMsg(group_id, msgs) {
   });
 }
 
-function sendGroupMsg(group_id, message) {
-  return bot('send_group_msg', {
-    group_id,
-    message,
-  });
-}
-
 /**
  * 生成随机浮点数
  *
@@ -858,7 +850,7 @@ function debugMsgDeleteBase64Content(msg) {
   return msg.replace(/base64:\/\/[a-z\d+/=]+/gi, '(base64)');
 }
 
-function getUniversalImgURL(url = '') {
+function getUniversalImgURL(url) {
   return url
     .replace('/gchat.qpic.cn/gchatpic_new/', '/c2cpicdw.qpic.cn/offpic_new/')
     .replace(/\/\d+\/+\d+-\d+-/, '/0/0-10000-')

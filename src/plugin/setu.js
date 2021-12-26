@@ -1,6 +1,6 @@
 import _, { random } from 'lodash';
-import { getLocalReverseProxyURL } from './pximg';
-import CQ from '../CQcode';
+import { getProxyURL } from './pximg';
+import CQcode from '../CQcode';
 import { URL } from 'url';
 import NamedRegExp from 'named-regexp-groups';
 import '../utils/jimp.plugin';
@@ -14,11 +14,7 @@ const API_URL = 'https://api.lolicon.app/setu/v2';
 const PIXIV_404 = Symbol('Pixiv image 404');
 
 async function imgAntiShielding(url) {
-  const setting = global.config.bot.setu;
-  const proxy = setting.pximgProxy.trim();
-  const img = await Jimp.read(
-    proxy ? Buffer.from(await Axios.get(url, { responseType: 'arraybuffer' }).then(r => r.data)) : url
-  );
+  const img = await Jimp.read(url);
 
   switch (Number(global.config.bot.setu.antiShielding)) {
     case 1:
@@ -61,7 +57,7 @@ async function getAntiShieldingBase64(url, fallbackUrl) {
 
 function sendSetu(context, at = true) {
   const setuReg = new NamedRegExp(global.config.bot.regs.setu);
-  const setuRegExec = setuReg.exec(CQ.unescape(context.message));
+  const setuRegExec = setuReg.exec(CQcode.unescape(context.message));
   if (!setuRegExec) return false;
 
   const setting = global.config.bot.setu;
@@ -104,7 +100,6 @@ function sendSetu(context, at = true) {
     return true;
   }
 
-<<<<<<< HEAD
     let success = false;
     Axios.post(API_URL, { r18, tag: keyword, size: ['original', 'regular'], proxy: null })
         .then(ret => ret.data)
@@ -185,83 +180,6 @@ function sendSetu(context, at = true) {
         })
         .catch(e => {
             console.error(`${global.getTime()} [error]`);
-=======
-  let success = false;
-  Axios.post(API_URL, { r18, tag: keyword, size: ['original', 'regular'], proxy: null })
-    .then(ret => ret.data)
-    .then(async ret => {
-      if (ret.error) return global.replyMsg(context, ret.error, at);
-      if (!ret.data.length) return global.replyMsg(context, replys.setuNotFind, at);
-
-      const setu = ret.data[0];
-      const setuUrl = setting.size1200 ? setu.urls.regular : setu.urls.original;
-      const urlMsgs = [`https://pixiv.net/i/${setu.pid} (p${setu.p})`];
-      if (setting.sendPximgProxys.length) {
-        const sendUrls = [];
-        for (const imgProxy of setting.sendPximgProxys) {
-          const imgUrl = getSetuUrlByTemplate(imgProxy, setu, setu.urls.original);
-          sendUrls.push((await urlShorten(setting.shortenPximgProxy, imgUrl)).result);
-        }
-        if (sendUrls.length === 1) urlMsgs.push(`原图地址：${sendUrls[0]}`);
-        else urlMsgs.push('原图地址：', ...sendUrls);
-      }
-
-      if (
-        r18 &&
-        setting.r18OnlyUrl[
-          context.message_type === 'private' && context.sub_type !== 'friend' ? 'temp' : context.message_type
-        ]
-      ) {
-        global.replyMsg(context, urlMsgs.join('\n'), false, at);
-        return;
-      }
-      if (privateR18) urlMsgs.push('※ 图片将私聊发送');
-      global.replyMsg(context, urlMsgs.join('\n'), at);
-
-      const getReqUrl = url => (proxy ? getSetuUrlByTemplate(proxy, setu, url) : getLocalReverseProxyURL(url));
-      const url = getReqUrl(setuUrl);
-      const fallbackUrl = setting.size1200 ? undefined : getReqUrl(setu.urls.regular);
-
-      // 反和谐
-      const base64 =
-        !privateR18 &&
-        isGroupMsg &&
-        setting.antiShielding &&
-        (await getAntiShieldingBase64(url, fallbackUrl).catch(e => {
-          console.error(`${global.getTime()} [error] anti shielding`);
-          console.error(url);
-          console.error(e);
-          if (String(e).includes('Could not find MIME for Buffer') || String(e).includes('status code 404')) {
-            return PIXIV_404;
-          }
-          global.replyMsg(context, '反和谐发生错误，图片将原样发送，详情请查看错误日志');
-        }));
-
-      if (base64 === PIXIV_404) {
-        global.replyMsg(context, '图片发送失败，可能是网络问题/插画已被删除/原图地址失效');
-        return;
-      }
-
-      const imgType = delTime === -1 ? 'flash' : null;
-      if (privateR18) {
-        global.bot('send_private_msg', {
-          user_id: context.user_id,
-          group_id: setting.r18OnlyPrivateAllowTemp ? context.group_id : undefined,
-          message: CQ.img(url, imgType),
-        });
-      } else {
-        global
-          .replyMsg(context, base64 ? CQ.img64(base64, imgType) : CQ.img(url, imgType))
-          .then(r => {
-            const message_id = _.get(r, 'data.message_id');
-            if (delTime > 0 && message_id)
-              setTimeout(() => {
-                global.bot('delete_msg', { message_id });
-              }, delTime * 1000);
-          })
-          .catch(e => {
-            console.error(`${global.getTime()} [error] delete msg`);
->>>>>>> a60796e4b337ad4f2910439104fb1292bb0a7718
             console.error(e);
             global.replyMsg(context, replys.setuError, at);
         })
